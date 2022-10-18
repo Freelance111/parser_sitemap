@@ -8,7 +8,6 @@ import os
 os.environ.setdefault('AIOHTTP_NO_EXTENSIONS', "1")
 import aiohttp
 
-
 with open('data.csv', 'w') as csvfile:
     writer = csv.writer(csvfile)
     writer.writerow(['Site', 'Amount'])
