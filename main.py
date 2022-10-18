@@ -29,7 +29,6 @@ async def main():
 
             tasks_get_amount_urls = []
             for url_sitemap in urls_sitemaps:
-                print(url_sitemap)
                 task = asyncio.create_task(get_amount_urls(url_sitemap))
                 tasks_get_amount_urls.append(task)
 
@@ -65,11 +64,10 @@ async def get_amount_urls(url_sitemap):
 async def get_urls_sitemaps(url_site):
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f'{url_site}/robots.txt') as resp:
+            async with session.get(f'{url_site}robots.txt') as resp:
                 response = await resp.text()
                 if resp.status == 404:
-                    print(f'\t{url_site} --- non-working site')
-                    urls_sitemaps.append(f'{url_site}/sitemap.xml')
+                    urls_sitemaps.append(f'{url_site}sitemap.xml')
                     return
 
         text = response.strip().split()
@@ -85,7 +83,7 @@ async def create_file():
 
         for site_data in sites_data:
             for key, value in site_data.items():
-                writer.writerow([key, value])
+                writer.writerow((key, value))
 
 
 if __name__ == '__main__':
