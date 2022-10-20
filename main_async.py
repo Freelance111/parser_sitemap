@@ -15,49 +15,72 @@ with open('data.csv', 'w') as csvfile:
 
 
 async def main():
-    with open('urls_sites.txt', 'r') as file_urls_sites:
-        try:
-            tasks = []
-            for index, url_site in enumerate(file_urls_sites):
-                tasks.append(asyncio.create_task(get_urls_sitemaps(url_site.strip(), index)))
-
-
+    amount = int(input('How many sites in a document: '))
+    data = [0] * amount
+    amount_sitemaps = []
+    try:
+        urls_sitemaps = []
+        for item in range(0, amount - 100, 100):
+            print(item)
             create_task = time.time()
-            urls_sitemaps = await asyncio.gather(*tasks)
+            urls_sitemaps.extend(await asyncio.gather(*(generat_sites(item, item+100))))
             finish_time = time.time() - create_task
-            print(f'Script time first part --- {finish_time}')
+            print(f'Script time --- {finish_time}')
 
-            print(f'{len(urls_sitemaps)} --- {urls_sitemaps}')
 
-            tasks = []
-            for index, item in enumerate(urls_sitemaps):
+
+        print(f'{len(urls_sitemaps)} --- {urls_sitemaps}')
+
+        with open('urls_sites.txt', 'r') as file:
+            for index, url_site in enumerate(file):
+                tasks = []
                 try:
-                    if item == []:
-                        tasks.append(asyncio.create_task(get_amount_urls([0], index)))
-                    elif item[0] in ["don't have sitemap", 'incorrect response', 'response size too large',
+                    print(index)
+                    if urls_sitemaps[index] == []:
+                        dict = {
+                            'url_site': 0
+                        }
+                        data.insert(index, dict)
+                    elif urls_sitemaps[index] in ["don't have sitemap", 'incorrect response', 'response size too large',
                                    'ConnectionResetError', 'ServerDisconnectedError']:
-                        tasks.append(asyncio.create_task(get_amount_urls(item[0], index)))
-                    elif len(item) == 1:
-                        tasks.append(asyncio.create_task(get_amount_urls(item, index)))
+                        dict = {
+                            'url_site': urls_sitemaps[index]
+                        }
+                        data.insert(index, dict)
                     else:
-                        tasks.append(asyncio.create_task(get_amount_urls(item, index)))
+                        tasks.append(asyncio.create_task(get_amount_urls(urls_sitemaps[index], index)))
+
                 except IndexError:
-                    print(f'{item} --- {index}')
+                    print(f'{urls_sitemaps[index]} --- {index}')
 
-            create_task = time.time()
-            amount_sitemaps = await asyncio.gather(*tasks)
-            finish_time = time.time() - create_task
-            print(f'Script time second part --- {finish_time}')
+                if index == amount - 1:
+                    break
+
+        create_task = time.time()
+        amount_sitemaps = await asyncio.gather(*tasks)
+        finish_time = time.time() - create_task
+        print(f'Script time second part --- {finish_time}')
+
+    except ValueError as ex:
+        print(f'\n\tAn unknown error has occurred:\n{ex}')
 
 
-        except ValueError as ex:
-            print(f'\n\tAn unknown error has occurred:\n{ex}')
 
-    create_file(amount_sitemaps)
+    for dict in amount_sitemaps:
+        for key, value in dict.items():
+            data.insert(int(key), value)
+    create_file(data)
 
 
-async def generator_sites():
-
+def generat_sites(start, finish):
+    with open('urls_sites.txt', 'r') as file_urls_sites:
+        tasks = []
+        for index, url_site in enumerate(file_urls_sites):
+            if index >= start:
+                tasks.append(asyncio.create_task(get_urls_sitemaps(url_site.strip(), index)))
+            if index == finish - 1:
+                tasks.append(asyncio.create_task(get_urls_sitemaps(url_site.strip(), index)))
+                return tasks
 
 
 async def get_urls_sitemaps(url_site, index):
@@ -69,10 +92,6 @@ async def get_urls_sitemaps(url_site, index):
             all_urls_sitemap = []
             if resp.status in [404, 403]:
                 all_urls_sitemap.append(f'{url_site}sitemap.xml')
-            # elif resp.status == 403:
-            #     print(f'{url_site} --- Site access denied')
-            #     all_urls_sitemap.append(f'Site access denied')
-            #     return
             else:
                 response = await resp.text()
 
@@ -172,18 +191,19 @@ async def get_amount_urls(urls, index, default=True):
         #     print(f'\n{url} get_amount_urls:\n\t{ex}')
         finally:
             if default:
-                return amount
+                dict = {f'{index}': amount}
+                return dict
             else:
                 return urls_loc
 
 
-def create_file(amount_sitemaps):
+def create_file(data):
     with open('data.csv', 'a') as csvfile:
         writer = csv.writer(csvfile)
-        print(str(len(amount_sitemaps)) + ' --- ' + str(amount_sitemaps))
+        print(str(len(data)) + ' --- ' + str(data))
         with open('urls_sites.txt', 'r', newline='') as file:
             for index, url_site in enumerate(file):
-                writer.writerow((url_site.strip(), amount_sitemaps[index]))
+                writer.writerow((url_site.strip(), data[index]))
 
 
 
