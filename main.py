@@ -7,7 +7,8 @@ import os
 
 os.environ.setdefault('AIOHTTP_NO_EXTENSIONS', "1")
 import aiohttp
-from asyncio import BoundedSemaphore
+
+
 
 with open('data.csv', 'w') as csvfile:
     writer = csv.writer(csvfile)
@@ -41,7 +42,7 @@ async def main():
                         if urls_sitemaps[index][0] in ["don't have sitemap", 'incorrect response',
                                                        'response size too large', 'ConnectionResetError',
                                                        'ServerDisconnectedError', 'private access',
-                                                       'error 404', [0]]:
+                                                       'error 404', 'archive']:
                             data.insert(index, urls_sitemaps[index][0])
                         else:
                             tasks.append(asyncio.create_task(get_amount_urls(urls_sitemaps[index], index)))
@@ -126,14 +127,14 @@ async def check_sitemap(urls, index):
     try:
         urls_loc = await get_amount_urls(urls, None, False)
 
-        if urls_loc[0] in ['private access', 'error 404']:
+        if urls_loc[0] in ['private access', 'error 404', 'archive']:
             urls_sitemap.append(urls_loc[0])
             return
-        check = urls_loc[0].text.find('xml')
-        if check > 0:
+
+        if urls_loc[0].text.find('xml') > 0:
             for item in urls_loc:
                 urls_sitemap.append(item.text)
-        elif check == -1:
+        else:
             urls_sitemap.append(urls[0])
             return
     finally:
@@ -171,6 +172,9 @@ async def get_amount_urls(urls, index, default=True):
             print(f'{url} --- incorrect response')
         except ConnectionResetError:
             print(f'{url} --- ConnectionResetError')
+        except UnicodeDecodeError:
+            print(f'{url} --- archive')
+            urls_loc.append('archive')
         except Exception as ex:
             print(f'\n{url} get_amount_urls:\n\t{ex}')
         finally:
