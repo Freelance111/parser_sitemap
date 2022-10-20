@@ -38,8 +38,10 @@ async def main():
                     try:
                         # if urls_sitemaps[index] == []:
                         #     data.insert(index, 0)
-                        if urls_sitemaps[index][0] in ["don't have sitemap", 'incorrect response', 'response size too large',
-                                       'ConnectionResetError', 'ServerDisconnectedError', 'private access']:
+                        if urls_sitemaps[index][0] in ["don't have sitemap", 'incorrect response',
+                                                       'response size too large', 'ConnectionResetError',
+                                                       'ServerDisconnectedError', 'private access',
+                                                       'error 404', [0]]:
                             data.insert(index, urls_sitemaps[index][0])
                         else:
                             tasks.append(asyncio.create_task(get_amount_urls(urls_sitemaps[index], index)))
@@ -148,11 +150,8 @@ async def get_amount_urls(urls, index, default=True):
             async with aiohttp.ClientSession() as session:
                 async with session.get(f'{url}') as resp:
                     if resp.status == 404:
-                        if default:
-                            print(f'{url} --- doesn`t exist')
-                        else:
-                            print(f'{url} --- error 404')
-                            urls_loc.append('error 404')
+                        print(f'{url} --- error 404')
+                        urls_loc.append('error 404')
                         continue
                     elif resp.status == 403:
                         print(f'{url} --- private access')
