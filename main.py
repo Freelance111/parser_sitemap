@@ -14,9 +14,6 @@ with open('data.csv', 'w') as csvfile:
     writer.writerow(['Site', 'Amount'])
 
 
-
-sem = BoundedSemaphore(100)
-
 async def main():
     with open('urls_sites.txt', 'r') as file_urls_sites:
         try:
@@ -28,14 +25,17 @@ async def main():
             create_task = time.time()
             urls_sitemaps = await asyncio.gather(*tasks)
             finish_time = time.time() - create_task
-            print(f'Script time one part --- {finish_time}')
+            print(f'Script time first part --- {finish_time}')
 
-            print(urls_sitemaps)
+            print(f'{len(urls_sitemaps)} --- {urls_sitemaps}')
 
             tasks = []
             for index, item in enumerate(urls_sitemaps):
                 try:
-                    if item[0] in ["don't have sitemap", 'incorrect response', 'response size too large']:
+                    if item == []:
+                        tasks.append(asyncio.create_task(get_amount_urls([0], index)))
+                    elif item[0] in ["don't have sitemap", 'incorrect response', 'response size too large',
+                                   'ConnectionResetError', 'ServerDisconnectedError']:
                         tasks.append(asyncio.create_task(get_amount_urls(item[0], index)))
                     elif len(item) == 1:
                         tasks.append(asyncio.create_task(get_amount_urls(item, index)))
@@ -47,7 +47,7 @@ async def main():
             create_task = time.time()
             amount_sitemaps = await asyncio.gather(*tasks)
             finish_time = time.time() - create_task
-            print(f'Script time two part --- {finish_time}')
+            print(f'Script time second part --- {finish_time}')
 
 
         except ValueError as ex:
@@ -55,36 +55,32 @@ async def main():
 
     create_file(amount_sitemaps)
 
-async def generation_sites():
-
-
 async def get_urls_sitemaps(url_site, index):
     urls_sitemaps = []
 
     try:
-        async with sem:
-            async with aiohttp.ClientSession() as session:
-                resp = await session.get(f'{url_site}robots.txt')
-                all_urls_sitemap = []
-                if resp.status in [404, 403]:
-                    all_urls_sitemap.append(f'{url_site}sitemap.xml')
-                # elif resp.status == 403:
-                #     print(f'{url_site} --- Site access denied')
-                #     all_urls_sitemap.append(f'Site access denied')
-                #     return
-                else:
-                    response = await resp.text()
+        async with aiohttp.ClientSession() as session:
+            resp = await session.get(f'{url_site}robots.txt')
+            all_urls_sitemap = []
+            if resp.status in [404, 403]:
+                all_urls_sitemap.append(f'{url_site}sitemap.xml')
+            # elif resp.status == 403:
+            #     print(f'{url_site} --- Site access denied')
+            #     all_urls_sitemap.append(f'Site access denied')
+            #     return
+            else:
+                response = await resp.text()
 
-                    text = response.strip().split()
-                    search = 'Sitemap:'
-                    if response.find('sitemap:') > 0:
-                        search = 'sitemap:'
-                    while True:
-                        index_sitemap = text.index(search)
-                        text.remove(search)
-                        all_urls_sitemap.append([text[index_sitemap]])
-                        if text.count(search) == 0:
-                            break
+                text = response.strip().split()
+                search = 'Sitemap:'
+                if response.find('sitemap:') > 0:
+                    search = 'sitemap:'
+                while True:
+                    index_sitemap = text.index(search)
+                    text.remove(search)
+                    all_urls_sitemap.append([text[index_sitemap]])
+                    if text.count(search) == 0:
+                        break
 
         urls_sitemaps = await check_sitemap(all_urls_sitemap, index)
         if urls_sitemaps == []:
@@ -107,47 +103,17 @@ async def get_urls_sitemaps(url_site, index):
     except aiohttp.client_exceptions.ServerDisconnectedError:
         print(f'{url_site} --- ServerDisconnectedError')
         urls_sitemaps.append('ServerDisconnectedError')
-    except aiohttp.client_connection:
-        print(f'{url_site} --- Unclosed connection')
-        urls_sitemaps.append('Unclosed connection')
     # except Exception as ex:
     #     print(f'\n{url_site} get_urls_sitemaps:\n\t{ex}')
+    #     urls_sitemaps.append('Error')
     finally:
         return urls_sitemaps
-
-
-# async def check_sitemap(urls, index):
-#     urls_sitemaps = []
-#     urls_loc = 0
-#     print(urls)
-#     try:
-#         for url_sitemap in urls:
-#             if len(urls) == 1:
-#                 urls_loc = await get_amount_urls(urls, None, False)
-#             else:
-#                 urls_loc = await get_amount_urls(url_sitemap, None, False)
-#
-#             if urls_loc == 0:
-#                 urls_sitemaps.append(0)
-#                 continue
-#             for url in urls_loc:
-#                 if url.text.find('xml') > 0:
-#                     urls_sitemaps.append(url.text)
-#                 else:
-#                     urls_sitemaps.append(url_sitemap)
-#                     return
-#     finally:
-#         print(urls_sitemaps)
-#         return urls_sitemaps
-#
-
-
 
 
 
 async def check_sitemap(urls, index):
     urls_sitemap = []
-    print(urls)
+
     try:
         for url in urls:
             if len(urls) == 1:
@@ -172,7 +138,6 @@ async def check_sitemap(urls, index):
 async def get_amount_urls(urls, index, default=True):
     amount = 0
     urls_loc = []
-    print(urls)
     for url in urls:
         try:
             async with aiohttp.ClientSession() as session:
