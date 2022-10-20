@@ -103,9 +103,9 @@ async def get_urls_sitemaps(url_site, index):
     except aiohttp.client_exceptions.ServerDisconnectedError:
         print(f'{url_site} --- ServerDisconnectedError')
         urls_sitemaps.append('ServerDisconnectedError')
-    # except Exception as ex:
-    #     print(f'\n{url_site} get_urls_sitemaps:\n\t{ex}')
-    #     urls_sitemaps.append('Error')
+    except Exception as ex:
+        print(f'\n{url_site} get_urls_sitemaps:\n\t{ex}')
+        urls_sitemaps.append('Error')
     finally:
         return urls_sitemaps
 
