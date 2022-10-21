@@ -37,8 +37,6 @@ async def main():
             with open('urls_sites.txt', 'r') as file:
                 for index, url_site in enumerate(file):
                     try:
-                        # if urls_sitemaps[index] == []:
-                        #     data.insert(index, 0)
                         if urls_sitemaps[index][0] in ["don't have sitemap", 'incorrect response',
                                                        'response size too large', 'ConnectionResetError',
                                                        'ServerDisconnectedError', 'private access',
@@ -67,17 +65,14 @@ async def main():
 
 async def get_urls_sitemaps(url_site, index):
     urls_sitemaps = []
+    url = None
 
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(trust_env=True) as session:
             resp = await session.get(f'{url_site}robots.txt')
             all_urls_sitemap = []
             if resp.status in [404, 403]:
                 all_urls_sitemap.append(f'{url_site}sitemap.xml')
-            # elif resp.status == 403:
-            #     print(f'{url_site} --- Site access denied')
-            #     all_urls_sitemap.append(f'Site access denied')
-            #     return
             else:
                 response = await resp.text()
 
@@ -85,12 +80,16 @@ async def get_urls_sitemaps(url_site, index):
                 search = 'Sitemap:'
                 if response.find('sitemap:') > 0:
                     search = 'sitemap:'
-                while True:
-                    index_sitemap = text.index(search)
-                    text.remove(search)
-                    all_urls_sitemap.append(text[index_sitemap])
-                    if text.count(search) == 0:
-                        break
+                try:
+                    while True:
+                        index_sitemap = text.index(search)
+                        text.remove(search)
+                        all_urls_sitemap.append(text[index_sitemap])
+                        if text.count(search) == 0:
+                            break
+                except ValueError:
+                    all_urls_sitemap.append(f'{url_site}sitemap.xml')
+
 
         urls_sitemaps = await check_sitemap(all_urls_sitemap, index)
         if urls_sitemaps == []:
@@ -98,9 +97,6 @@ async def get_urls_sitemaps(url_site, index):
         else:
             return urls_sitemaps
 
-    except ValueError as ex:
-        print(f'\t{url_site} --- don`t have sitemap')
-        urls_sitemaps.append("don't have sitemap")
     except aiohttp.client_exceptions.ClientPayloadError as ex:
         print(f'{url_site} --- incorrect response')
         urls_sitemaps.append('incorrect response')
@@ -148,7 +144,7 @@ async def get_amount_urls(urls, index, default=True):
     urls_loc = []
     for url in urls:
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(trust_env=True) as session:
                 async with session.get(f'{url}') as resp:
                     if resp.status == 404:
                         print(f'{url} --- error 404')
@@ -175,6 +171,7 @@ async def get_amount_urls(urls, index, default=True):
         except UnicodeDecodeError:
             print(f'{url} --- archive')
             urls_loc.append('archive')
+            amount = 'archive'
         except Exception as ex:
             print(f'\n{url} get_amount_urls:\n\t{ex}')
         finally:
@@ -191,6 +188,8 @@ def create_file(data):
         print(str(len(data)) + ' --- ' + str(data))
         with open('urls_sites.txt', 'r') as file:
             for index, url_site in enumerate(file):
+                if data[index] == 0:
+                    print(f'{url_site.strip()} --- {data[index]}')
                 writer.writerow((url_site.strip(), data[index]))
 
 
